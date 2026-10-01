@@ -27,7 +27,30 @@ public final class Asciify {
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getInt();
 
-        out.write("BMP ok, pixel offset = " + pixelOffset);
+        byte[] dibHeader = in.readNBytes(40);
+
+        if (dibHeader.length < 40) {
+            throw new IOException("File too short to be a BMP DIB header");
+        }
+
+        int imgWidth = ByteBuffer.wrap(dibHeader, 4, 4)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .getInt();
+
+        int imgHeight = ByteBuffer.wrap(dibHeader, 8, 4)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .getInt();
+
+        int bitsPerPixel = ByteBuffer.wrap(dibHeader, 14, 2)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .getShort() & 0xFFFF;
+
+        if (bitsPerPixel != 24) {
+            throw new IOException("Only 24-bit BMP is supported, got: " + bitsPerPixel);
+        }
+
+        out.write(
+                "BMP ok, " + imgWidth + " X " + imgHeight + ", bpp= " + bitsPerPixel + ", pixelOffset= " + pixelOffset);
         out.write(System.lineSeparator());
 
     }
