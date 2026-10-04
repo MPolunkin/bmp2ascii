@@ -36,8 +36,9 @@ public class BmpifyCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
+            scale = Math.max(1, scale); // Ensure scale is at least 1
             List<String> lines = readAsciiArt(input, inputEncoding);
-            writeBmp(output, lines);
+            writeBmp(output, lines, scale);
             return 0;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
@@ -59,18 +60,21 @@ public class BmpifyCommand implements Callable<Integer> {
         return lines;
     }
 
-    private void writeBmp(File file, List<String> lines) throws IOException {
+    private void writeBmp(File file, List<String> lines, int factor) throws IOException {
         int artWidth = getMaxLineWidth(lines);
         int artHeight = lines.size();
 
-        int rowPadding = calculateRowPadding(artWidth);
-        int rowBytes = artWidth * 3 + rowPadding;
+        int imgWidth = artWidth * factor;
+        int imgHeight = artHeight * factor;
 
-        byte[] header = createBmpHeader(artWidth, artHeight, rowBytes);
+        int rowPadding = calculateRowPadding(imgWidth);
+        int rowBytes = imgWidth * 3 + rowPadding;
+
+        byte[] header = createBmpHeader(imgWidth, imgHeight, rowBytes);
 
         try (var out = new BufferedOutputStream(new FileOutputStream(file))) {
             out.write(header);
-            writePixelData(out, lines, artWidth, artHeight, rowBytes, rowPadding);
+            writePixelData(out, lines, factor, imgWidth, imgHeight, rowBytes, rowPadding);
         }
     }
 
@@ -110,15 +114,18 @@ public class BmpifyCommand implements Callable<Integer> {
         return buffer.array();
     }
 
-    private void writePixelData(BufferedOutputStream out, List<String> lines,
+    private void writePixelData(BufferedOutputStream out, List<String> lines, int factor,
                                 int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
         byte[] rowBuffer = new byte[rowBytes];
 
         // BMP rows are stored bottom-up: y goes from (imgHeight - 1) down to 0
         for (int y = imgHeight - 1; y >= 0; y--) {
-            String line = lines.get(y);
+            int artLineIndex = y / factor;
+            String line = lines.get(artLineIndex);
+
             for (int x = 0; x < imgWidth; x++) {
-                char c = x < line.length() ? line.charAt(x) : ' ';
+                int artColIndex = x / factor;
+                char c = artColIndex < line.length() ? line.charAt(artColIndex) : ' ';
                 byte gray = charToGrayscale(c);
 
                 int offset = x * 3;
