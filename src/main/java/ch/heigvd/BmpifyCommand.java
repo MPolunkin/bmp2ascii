@@ -4,8 +4,6 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,10 +27,31 @@ public class BmpifyCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
+            List<String> lines = readAsciiArt(input, inputEncoding);
+            int width = getMaxLineWidth(lines);
+            int height = lines.size();
             return 0;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
         }
+    }
+
+    private List<String> readAsciiArt(File file, String encoding) throws IOException {
+        List<String> lines = new ArrayList<>();
+        try (var reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), Charset.forName(encoding)))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
+        }
+        if (lines.isEmpty()) {
+            throw new IOException("Input file is empty: " + file.getName());
+        }
+        return lines;
+    }
+
+    private int getMaxLineWidth(List<String> lines) {
+        return lines.stream().mapToInt(String::length).max().orElse(0);
     }
 }
