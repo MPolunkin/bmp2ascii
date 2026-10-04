@@ -46,6 +46,9 @@ public class BmpifyCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * Reads all lines of the ASCII art file using the specified character encoding.
+     */
     private List<String> readAsciiArt(File file, String encoding) throws IOException {
         List<String> lines = new ArrayList<>();
         try (var reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), Charset.forName(encoding)))) {
@@ -60,6 +63,9 @@ public class BmpifyCommand implements Callable<Integer> {
         return lines;
     }
 
+    /**
+     * Orchestrates writing the complete BMP file.
+     */
     private void writeBmp(File file, List<String> lines, int factor) throws IOException {
         int artWidth = getMaxLineWidth(lines);
         int artHeight = lines.size();
@@ -78,14 +84,23 @@ public class BmpifyCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * Computes the maximum line length across all lines to handle ragged art.
+     */
     private int getMaxLineWidth(List<String> lines) {
         return lines.stream().mapToInt(String::length).max().orElse(0);
     }
 
+    /**
+     * Calculates the number of padding bytes (0-3) required for 4-byte row alignment.
+     */
     private int calculateRowPadding(int pixelWidth) {
         return (4 - (pixelWidth * 3) % 4) % 4;
     }
 
+    /**
+     * Constructs the standard 54-byte BMP header (14-byte file header + 40-byte DIB header).
+     */
     private byte[] createBmpHeader(int width, int height, int rowBytes) {
         int imageSize = rowBytes * height;
         int fileSize = BMP_HEADER_SIZE + imageSize;
@@ -114,6 +129,9 @@ public class BmpifyCommand implements Callable<Integer> {
         return buffer.array();
     }
 
+    /**
+     * Streams pixel rows bottom-to-top directly to the output stream.
+     */
     private void writePixelData(BufferedOutputStream out, List<String> lines, int factor,
                                 int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
         byte[] rowBuffer = new byte[rowBytes];
@@ -121,7 +139,7 @@ public class BmpifyCommand implements Callable<Integer> {
         // BMP rows are stored bottom-up: y goes from (imgHeight - 1) down to 0
         for (int y = imgHeight - 1; y >= 0; y--) {
             int artLineIndex = y / factor;
-            String line = lines.get(artLineIndex);
+            String line = artLineIndex < lines.size() ? lines.get(artLineIndex) : "";
 
             for (int x = 0; x < imgWidth; x++) {
                 int artColIndex = x / factor;
@@ -129,18 +147,27 @@ public class BmpifyCommand implements Callable<Integer> {
                 byte gray = charToGrayscale(c);
 
                 int offset = x * 3;
-                rowBuffer[offset] = gray;     // Blue
+                rowBuffer[offset]     = gray; // Blue
                 rowBuffer[offset + 1] = gray; // Green
                 rowBuffer[offset + 2] = gray; // Red
             }
+
+            // Zero out padding bytes at the end of the row
+            for (int p = 0; p < rowPadding; p++) {
+                rowBuffer[imgWidth * 3 + p] = 0;
+            }
+
             out.write(rowBuffer);
         }
     }
 
+    /**
+     * Maps an ASCII character to a grayscale brightness value [0, 255].
+     */
     private byte charToGrayscale(char c) {
         int idx = Main.RAMP.indexOf(c);
         if (idx == -1) {
-            return (byte) 255;
+            return (byte) 255; // Default unknown characters or whitespace to white
         }
         return (byte) (idx * 255 / (Main.RAMP.length() - 1));
     }
