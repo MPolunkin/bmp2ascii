@@ -37,11 +37,7 @@ public class BmpifyCommand implements Callable<Integer> {
     public Integer call() {
         try {
             List<String> lines = readAsciiArt(input, inputEncoding);
-            int width = getMaxLineWidth(lines);
-            int height = lines.size();
-            int rowPadding = calculateRowPadding(width);
-            int rowBytes = width * 3 + rowPadding;
-            byte[] header = createBmpHeader(width, height, rowBytes);
+            writeBmp(output, lines);
             return 0;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
@@ -61,6 +57,21 @@ public class BmpifyCommand implements Callable<Integer> {
             throw new IOException("Input file is empty: " + file.getName());
         }
         return lines;
+    }
+
+    private void writeBmp(File file, List<String> lines) throws IOException {
+        int artWidth = getMaxLineWidth(lines);
+        int artHeight = lines.size();
+
+        int rowPadding = calculateRowPadding(artWidth);
+        int rowBytes = artWidth * 3 + rowPadding;
+
+        byte[] header = createBmpHeader(artWidth, artHeight, rowBytes);
+
+        try (var out = new BufferedOutputStream(new FileOutputStream(file))) {
+            out.write(header);
+            writePixelData(out, lines, artWidth, artHeight, rowBytes, rowPadding);
+        }
     }
 
     private int getMaxLineWidth(List<String> lines) {
@@ -97,5 +108,32 @@ public class BmpifyCommand implements Callable<Integer> {
         buffer.putInt(0);                        // Important colors
 
         return buffer.array();
+    }
+
+    private void writePixelData(BufferedOutputStream out, List<String> lines,
+                                int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
+        byte[] rowBuffer = new byte[rowBytes];
+
+        for (int y = 0; y < imgHeight; y++) {
+            String line = lines.get(y);
+            for (int x = 0; x < imgWidth; x++) {
+                char c = x < line.length() ? line.charAt(x) : ' ';
+                byte gray = charToGrayscale(c);
+
+                int offset = x * 3;
+                rowBuffer[offset] = gray;     // Blue
+                rowBuffer[offset + 1] = gray; // Green
+                rowBuffer[offset + 2] = gray; // Red
+            }
+            out.write(rowBuffer);
+        }
+    }
+
+    private byte charToGrayscale(char c) {
+        int idx = Main.RAMP.indexOf(c);
+        if (idx == -1) {
+            return (byte) 255;
+        }
+        return (byte) (idx * 255 / (Main.RAMP.length() - 1));
     }
 }
