@@ -114,7 +114,8 @@ public class BmpifyCommand implements Callable<Integer> {
                                 int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
         byte[] rowBuffer = new byte[rowBytes];
 
-        for (int y = 0; y < imgHeight; y++) {
+        // BMP rows are stored bottom-up: y goes from (imgHeight - 1) down to 0
+        for (int y = imgHeight - 1; y >= 0; y--) {
             String line = lines.get(y);
             for (int x = 0; x < imgWidth; x++) {
                 char c = x < line.length() ? line.charAt(x) : ' ';
