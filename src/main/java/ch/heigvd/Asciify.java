@@ -106,11 +106,23 @@ public final class Asciify {
 
         }
 
+        // output size full image or downscaled if -w arg.
+        int outWidth = imgWidth;
+        int outHeight = imgHeight;
+
+        if (width != null && width > 0 && width < imgWidth) {
+            outWidth = width;
+            outHeight = Math.max(1, absHeight * outWidth / imgWidth);
+        }
+
         // turning brightness into ASCII chars
         String ramp = Main.RAMP;
-        for (int row = 0; row < absHeight; row++) {
-            for (int col = 0; col < imgWidth; col++) {
-                int value = brightness[row][col];
+        for (int row = 0; row < outHeight; row++) {
+            for (int col = 0; col < outWidth; col++) {
+                // map output cell back to a pixel in the original image
+                int srcRow = row * absHeight / outHeight;
+                int srcCol = col * imgWidth / outWidth;
+                int value = brightness[srcRow][srcCol];
                 // flips dark/light
                 if (invert) {
                     value = 255 - value;
