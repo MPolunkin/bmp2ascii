@@ -18,11 +18,11 @@ public final class Asciify {
 
         // checks to see if BMP
         if (fileHeader.length < 14) {
-            throw new IOException("File too short to be a BMP:");
+            throw new IOException("File too short to be a BMP");
         }
 
         if (fileHeader[0] != 'B' || fileHeader[1] != 'M') {
-            throw new IOException("File is not a BMP file:");
+            throw new IOException("File is not a BMP file (missing BM signature).");
         }
 
         // Bytes 10-13 where pixel data starts
@@ -108,7 +108,7 @@ public final class Asciify {
 
         // output size full image or downscaled if -w arg.
         int outWidth = imgWidth;
-        int outHeight = imgHeight;
+        int outHeight = absHeight;
 
         if (width != null && width > 0 && width < imgWidth) {
             outWidth = width;
