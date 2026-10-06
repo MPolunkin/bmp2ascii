@@ -30,12 +30,24 @@ public class AsciifyCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        if (width != null && width <= 0) {
+            System.err.println("Error: --width must be a positive integer.");
+            return 1;
+        }
+
         try (var in = new BufferedInputStream(new FileInputStream(input));
                 var out = new BufferedWriter(
                         new OutputStreamWriter(new FileOutputStream(output), Charset.forName(outputEncoding)))) {
             Asciify.process(in, out, width, invert);
             return 0;
 
+        } catch (FileNotFoundException e) {
+            System.err.println("Error: file not found: " + e.getMessage());
+            return 1;
+
+        } catch (java.nio.charset.UnsupportedCharsetException e) {
+            System.err.println("Error: unknown output encoding: " + outputEncoding);
+            return 1;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
