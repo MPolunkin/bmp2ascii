@@ -4,22 +4,11 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Callable;
 
 @Command(name = "bmpify", description = "Convert ASCII to BMP", mixinStandardHelpOptions = true)
 public class BmpifyCommand implements Callable<Integer> {
-
-    private static final int BMP_HEADER_SIZE = 54;
-    private static final int DIB_HEADER_SIZE = 40;
-    private static final short COLOR_PLANES = 1;
-    private static final short BITS_PER_PIXEL = 24;
-    private static final int COMPRESSION_BI_RGB = 0;
-    private static final int DEFAULT_DPI_PPM = 2835; // ~72 DPI in pixels per meter
 
     @Option(names = {"-i", "--input"}, required = true, description = "Input ASCII art .txt file")
     private File input;
@@ -35,140 +24,27 @@ public class BmpifyCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        try {
-            scale = Math.max(1, scale); // Ensure scale is at least 1
-            List<String> lines = readAsciiArt(input, inputEncoding);
-            writeBmp(output, lines, scale);
+        if (scale < 1) {
+            System.err.println("Error: --scale must be at least 1.");
+            return 1;
+        }
+
+        try (var in = new BufferedReader(new InputStreamReader(new FileInputStream(input), Charset.forName(inputEncoding)));
+             var out = new BufferedOutputStream(new FileOutputStream(output))) {
+            Bmpify.process(in, out, scale);
             return 0;
+
+        } catch (FileNotFoundException e) {
+            System.err.println("Error: file not found: " + e.getMessage());
+            return 1;
+
+        } catch (java.nio.charset.UnsupportedCharsetException e) {
+            System.err.println("Error: unknown input encoding: " + inputEncoding);
+            return 1;
+
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
         }
-    }
-
-    /**
-     * Reads all lines of the ASCII art file using the specified character encoding.
-     */
-    private List<String> readAsciiArt(File file, String encoding) throws IOException {
-        List<String> lines = new ArrayList<>();
-        try (var reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), Charset.forName(encoding)))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
-            }
-        }
-        if (lines.isEmpty()) {
-            throw new IOException("Input file is empty: " + file.getName());
-        }
-        return lines;
-    }
-
-    /**
-     * Orchestrates writing the complete BMP file.
-     */
-    private void writeBmp(File file, List<String> lines, int factor) throws IOException {
-        int artWidth = getMaxLineWidth(lines);
-        int artHeight = lines.size();
-
-        int imgWidth = artWidth * factor;
-        int imgHeight = artHeight * factor;
-
-        int rowPadding = calculateRowPadding(imgWidth);
-        int rowBytes = imgWidth * 3 + rowPadding;
-
-        byte[] header = createBmpHeader(imgWidth, imgHeight, rowBytes);
-
-        try (var out = new BufferedOutputStream(new FileOutputStream(file))) {
-            out.write(header);
-            writePixelData(out, lines, factor, imgWidth, imgHeight, rowBytes, rowPadding);
-        }
-    }
-
-    /**
-     * Computes the maximum line length across all lines to handle ragged art.
-     */
-    private int getMaxLineWidth(List<String> lines) {
-        return lines.stream().mapToInt(String::length).max().orElse(0);
-    }
-
-    /**
-     * Calculates the number of padding bytes (0-3) required for 4-byte row alignment.
-     */
-    private int calculateRowPadding(int pixelWidth) {
-        return (4 - (pixelWidth * 3) % 4) % 4;
-    }
-
-    /**
-     * Constructs the standard 54-byte BMP header (14-byte file header + 40-byte DIB header).
-     */
-    private byte[] createBmpHeader(int width, int height, int rowBytes) {
-        int imageSize = rowBytes * height;
-        int fileSize = BMP_HEADER_SIZE + imageSize;
-
-        ByteBuffer buffer = ByteBuffer.allocate(BMP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
-
-        // BITMAPFILEHEADER (14 bytes)
-        buffer.put((byte) 'B').put((byte) 'M');  // Signature
-        buffer.putInt(fileSize);                 // Total file size
-        buffer.putInt(0);                        // Reserved
-        buffer.putInt(BMP_HEADER_SIZE);          // Pixel data offset (54)
-
-        // BITMAPINFOHEADER (40 bytes)
-        buffer.putInt(DIB_HEADER_SIZE);          // DIB header size (40)
-        buffer.putInt(width);                    // Width in pixels
-        buffer.putInt(height);                   // Height in pixels (positive = bottom-up)
-        buffer.putShort(COLOR_PLANES);           // Number of color planes (1)
-        buffer.putShort(BITS_PER_PIXEL);         // Bits per pixel (24)
-        buffer.putInt(COMPRESSION_BI_RGB);       // Compression (0 = uncompressed)
-        buffer.putInt(imageSize);                // Image payload size
-        buffer.putInt(DEFAULT_DPI_PPM);          // Horizontal resolution (~72 DPI)
-        buffer.putInt(DEFAULT_DPI_PPM);          // Vertical resolution (~72 DPI)
-        buffer.putInt(0);                        // Palette colors
-        buffer.putInt(0);                        // Important colors
-
-        return buffer.array();
-    }
-
-    /**
-     * Streams pixel rows bottom-to-top directly to the output stream.
-     */
-    private void writePixelData(BufferedOutputStream out, List<String> lines, int factor,
-                                int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
-        byte[] rowBuffer = new byte[rowBytes];
-
-        // BMP rows are stored bottom-up: y goes from (imgHeight - 1) down to 0
-        for (int y = imgHeight - 1; y >= 0; y--) {
-            int artLineIndex = y / factor;
-            String line = artLineIndex < lines.size() ? lines.get(artLineIndex) : "";
-
-            for (int x = 0; x < imgWidth; x++) {
-                int artColIndex = x / factor;
-                char c = artColIndex < line.length() ? line.charAt(artColIndex) : ' ';
-                byte gray = charToGrayscale(c);
-
-                int offset = x * 3;
-                rowBuffer[offset]     = gray; // Blue
-                rowBuffer[offset + 1] = gray; // Green
-                rowBuffer[offset + 2] = gray; // Red
-            }
-
-            // Zero out padding bytes at the end of the row
-            for (int p = 0; p < rowPadding; p++) {
-                rowBuffer[imgWidth * 3 + p] = 0;
-            }
-
-            out.write(rowBuffer);
-        }
-    }
-
-    /**
-     * Maps an ASCII character to a grayscale brightness value [0, 255].
-     */
-    private byte charToGrayscale(char c) {
-        int idx = Main.RAMP.indexOf(c);
-        if (idx == -1) {
-            return (byte) 255; // Default unknown characters or whitespace to white
-        }
-        return (byte) (idx * 255 / (Main.RAMP.length() - 1));
     }
 }
