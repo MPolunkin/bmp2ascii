@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AsciifyTest {
 
+    // edge case test for non BMP files
     @Test
     void rejectsNonBmpData() {
         byte[] notBmp = { 0x00, 0x01, 0x02 }; // doesnt start with B M.
@@ -92,6 +93,7 @@ public class AsciifyTest {
         return bmp;
     }
 
+    // feature test: successful asciify on minimal valid 24-bit Bmp
     @Test
     void convertsBlackPixelToDarkestRampChar() throws IOException {
         StringWriter out = new StringWriter();
@@ -125,6 +127,7 @@ public class AsciifyTest {
         assertEquals("@\n", small.toString().replace("\r\n", "\n"));
     }
 
+    // edge case reject non 24 bit bmp
     @Test
     void rejectNon24BitBmp() {
         StringWriter out = new StringWriter();
