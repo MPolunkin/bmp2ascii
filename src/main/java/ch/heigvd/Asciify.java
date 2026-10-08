@@ -23,6 +23,46 @@ public final class Asciify {
     public static void process(InputStream in, Writer out, Integer width, boolean invert)
             throws IOException {
 
+        BmpGrayImage image = readBrightness(in);
+        writeAscii(out, image, width, invert);
+
+    }
+
+    private static void writeAscii(Writer out, BmpGrayImage image, Integer width, boolean invert) throws IOException {
+        int imgWidth = image.width();
+        int absHeight = image.height();
+        int[][] brightness = image.brightness();
+
+        // output size full image or downscaled if -w arg.
+        int outWidth = imgWidth;
+        int outHeight = absHeight;
+
+        if (width != null && width > 0 && width < imgWidth) {
+            outWidth = width;
+            outHeight = Math.max(1, absHeight * outWidth / imgWidth);
+        }
+
+        // turning brightness into ASCII chars
+        String ramp = Main.RAMP;
+        for (int row = 0; row < outHeight; row++) {
+            for (int col = 0; col < outWidth; col++) {
+                // map output cell back to a pixel in the original image
+                int srcRow = row * absHeight / outHeight;
+                int srcCol = col * imgWidth / outWidth;
+                int value = brightness[srcRow][srcCol];
+                // flips dark/light
+                if (invert) {
+                    value = MAX_BRIGHTNESS - value;
+                }
+                int index = value * (ramp.length() - 1) / MAX_BRIGHTNESS;
+                out.write(ramp.charAt(index));
+
+            }
+            out.write(System.lineSeparator());
+        }
+    }
+
+    private static BmpGrayImage readBrightness(InputStream in) throws IOException {
         // BMP file header is always 14 bytes
         byte[] fileHeader = in.readNBytes(FILE_HEADER_SIZE);
 
@@ -116,32 +156,9 @@ public final class Asciify {
 
         }
 
-        // output size full image or downscaled if -w arg.
-        int outWidth = imgWidth;
-        int outHeight = absHeight;
+        return new BmpGrayImage(imgWidth, absHeight, brightness);
+    }
 
-        if (width != null && width > 0 && width < imgWidth) {
-            outWidth = width;
-            outHeight = Math.max(1, absHeight * outWidth / imgWidth);
-        }
-
-        // turning brightness into ASCII chars
-        String ramp = Main.RAMP;
-        for (int row = 0; row < outHeight; row++) {
-            for (int col = 0; col < outWidth; col++) {
-                // map output cell back to a pixel in the original image
-                int srcRow = row * absHeight / outHeight;
-                int srcCol = col * imgWidth / outWidth;
-                int value = brightness[srcRow][srcCol];
-                // flips dark/light
-                if (invert) {
-                    value = MAX_BRIGHTNESS - value;
-                }
-                int index = value * (ramp.length() - 1) / MAX_BRIGHTNESS;
-                out.write(ramp.charAt(index));
-
-            }
-            out.write(System.lineSeparator());
-        }
+    private record BmpGrayImage(int width, int height, int[][] brightness) {
     }
 }
