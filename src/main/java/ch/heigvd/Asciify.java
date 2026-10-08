@@ -133,12 +133,5 @@ public final class Asciify {
             }
             out.write(System.lineSeparator());
         }
-
-        // // temp debug
-        // out.write(
-        // "BMP ok, " + imgWidth + " X " + imgHeight + ", bpp= " + bitsPerPixel + ",
-        // pixelOffset= " + pixelOffset);
-        // out.write(System.lineSeparator());
-
     }
 }
