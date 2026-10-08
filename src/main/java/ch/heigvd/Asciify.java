@@ -7,6 +7,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public final class Asciify {
+    private static final int FILE_HEADER_SIZE = 14;
+    private static final int DIB_HEADER_SIZE = 40;
+    private static final int PIXEL_OFFSET_INDEX = 10;
+    private static final int WIDTH_INDEX = 4;
+    private static final int HEIGHT_INDEX = 8;
+    private static final int BITS_PER_PIXEL_INDEX = 14;
+    private static final int BITS_PER_PIXEL_SUPPORTED = 24;
+    private static final int BYTES_PER_PIXEL = 3;
+    private static final int MAX_BRIGHTNESS = 255;
+
     private Asciify() {
     }
 
@@ -14,10 +24,10 @@ public final class Asciify {
             throws IOException {
 
         // BMP file header is always 14 bytes
-        byte[] fileHeader = in.readNBytes(14);
+        byte[] fileHeader = in.readNBytes(FILE_HEADER_SIZE);
 
         // checks to see if BMP
-        if (fileHeader.length < 14) {
+        if (fileHeader.length < FILE_HEADER_SIZE) {
             throw new IOException("File too short to be a BMP");
         }
 
@@ -26,41 +36,41 @@ public final class Asciify {
         }
 
         // Bytes 10-13 where pixel data starts
-        int pixelOffset = ByteBuffer.wrap(fileHeader, 10, 4)
+        int pixelOffset = ByteBuffer.wrap(fileHeader, PIXEL_OFFSET_INDEX, 4)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getInt();
 
         // DIB header = width, height, bits/pixel
-        byte[] dibHeader = in.readNBytes(40);
+        byte[] dibHeader = in.readNBytes(DIB_HEADER_SIZE);
 
         // check
-        if (dibHeader.length < 40) {
+        if (dibHeader.length < DIB_HEADER_SIZE) {
             throw new IOException("File too short to be a BMP DIB header");
         }
 
         // width
-        int imgWidth = ByteBuffer.wrap(dibHeader, 4, 4)
+        int imgWidth = ByteBuffer.wrap(dibHeader, WIDTH_INDEX, 4)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getInt();
 
         // height. !can be negative (top down)!
-        int imgHeight = ByteBuffer.wrap(dibHeader, 8, 4)
+        int imgHeight = ByteBuffer.wrap(dibHeader, HEIGHT_INDEX, 4)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getInt();
 
         // bits/pixel reads 2 bytes and transforms into unsigned val (2beSafe)
-        int bitsPerPixel = ByteBuffer.wrap(dibHeader, 14, 2)
+        int bitsPerPixel = ByteBuffer.wrap(dibHeader, BITS_PER_PIXEL_INDEX, 2)
                 .order(ByteOrder.LITTLE_ENDIAN)
                 .getShort() & 0xFFFF;
 
         // we only handle 24 bit BMPs
-        if (bitsPerPixel != 24) {
+        if (bitsPerPixel != BITS_PER_PIXEL_SUPPORTED) {
             throw new IOException("Only 24-bit BMP is supported, got: " + bitsPerPixel);
         }
 
         // areadyRead = how far we are in the file, skip = how many more bytes until the
         // pixels start
-        int alreadyRead = 14 + 40;
+        int alreadyRead = FILE_HEADER_SIZE + DIB_HEADER_SIZE;
         int skip = pixelOffset - alreadyRead;
         if (skip < 0) {
             throw new IOException("Invalid BMP pixel offset");
@@ -74,7 +84,7 @@ public final class Asciify {
         int absHeight = Math.abs(imgHeight);
 
         // each row is padded to a multiple of 4 bytes
-        int rowSize = ((imgWidth * 3 + 3) / 4) * 4;
+        int rowSize = ((imgWidth * BYTES_PER_PIXEL + 3) / 4) * 4;
 
         // Gray val/pixel : 0 -> black , 255 -> white
         int[][] brightness = new int[absHeight][imgWidth];
@@ -95,7 +105,7 @@ public final class Asciify {
 
             for (int col = 0; col < imgWidth; col++) {
                 // each pixel is 3 bytes
-                int i = col * 3;
+                int i = col * BYTES_PER_PIXEL;
                 int blue = rowBytes[i] & 0xFF;
                 int green = rowBytes[i + 1] & 0xFF;
                 int red = rowBytes[i + 2] & 0xFF;
@@ -125,9 +135,9 @@ public final class Asciify {
                 int value = brightness[srcRow][srcCol];
                 // flips dark/light
                 if (invert) {
-                    value = 255 - value;
+                    value = MAX_BRIGHTNESS - value;
                 }
-                int index = value * (ramp.length() - 1) / 255;
+                int index = value * (ramp.length() - 1) / MAX_BRIGHTNESS;
                 out.write(ramp.charAt(index));
 
             }
