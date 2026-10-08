@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AsciifyTest {
 
-    // edge case test for non BMP files
     @Test
     void rejectsNonBmpData() {
         byte[] notBmp = { 0x00, 0x01, 0x02 }; // doesnt start with B M.
@@ -19,7 +18,6 @@ public class AsciifyTest {
         assertThrows(IOException.class, () -> Asciify.process(new ByteArrayInputStream(notBmp), out, null, false));
     }
 
-    // one black pixel
     private static byte[] oneBlackPixelBmp() {
         // headers + 1 pixel row : 3 bytes + 1 pad
         byte[] bmp = new byte[54 + 4];
@@ -44,7 +42,6 @@ public class AsciifyTest {
         return bmp;
     }
 
-    // two black pixels bmp
     private static byte[] twoByTwoBlackBmp() {
         // headers + 1 pixel row : 3 bytes + 1 pad
         byte[] bmp = new byte[54 + 8 * 2];
@@ -69,7 +66,6 @@ public class AsciifyTest {
         return bmp;
     }
 
-    // header says 8 bits/pixel (normally unsupported)
     private static byte[] eightBitBmpHeader() {
         // just for header, should fail before pixels matter
         byte[] bmp = new byte[54];
@@ -103,7 +99,6 @@ public class AsciifyTest {
         assertEquals("@\n", out.toString().replace("\r\n", "\n"));
     }
 
-    // --invert test
     @Test
     void invertBlackPixelIntoLightestRampChar() throws IOException {
         StringWriter out = new StringWriter();
@@ -112,7 +107,6 @@ public class AsciifyTest {
         assertEquals(" \n", out.toString().replace("\r\n", "\n"));
     }
 
-    // --width test
     @Test
     void widthDownscaleOutput() throws IOException {
         StringWriter full = new StringWriter();
@@ -127,7 +121,6 @@ public class AsciifyTest {
         assertEquals("@\n", small.toString().replace("\r\n", "\n"));
     }
 
-    // edge case reject non 24 bit bmp
     @Test
     void rejectNon24BitBmp() {
         StringWriter out = new StringWriter();
