@@ -19,6 +19,14 @@ public class BmpifyTest {
     }
 
     @Test
+    void rejectsInputWithOnlyNewlines() {
+        StringReader in = new StringReader("\n\n");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        assertThrows(IOException.class, () -> Bmpify.process(in, out, 1));
+    }
+
+    @Test
     void convertsDarkestCharToBlackPixel() throws IOException {
         StringReader in = new StringReader("@");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -85,5 +93,42 @@ public class BmpifyTest {
         ByteBuffer bb = ByteBuffer.wrap(bmp).order(ByteOrder.LITTLE_ENDIAN);
         assertEquals(3, bb.getInt(18)); // width should be max line length (3)
         assertEquals(2, bb.getInt(22)); // height should be 2
+    }
+
+    @Test
+    void stripsMaxRampToCharactersPresentInArt() throws IOException {
+        assertEquals("@# ", Bmpify.buildEffectiveRamp(java.util.List.of("@  ", "  # ")));
+        assertEquals("*.", Bmpify.buildEffectiveRamp(java.util.List.of("****", "....")));
+    }
+
+    @Test
+    void rejectsArtWithNoRecognizedCharacters() {
+        StringReader in = new StringReader("🔥\n");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        assertThrows(IOException.class, () -> Bmpify.process(in, out, 1));
+    }
+
+    @Test
+    void normalizesDynamicRangeBasedOnStrippedRamp() throws IOException {
+        // Input has only '#' and '.'
+        // In MAX_RAMP, '#' appears before '.'
+        // Stripped ramp is "#." where '#' is 0 (black) and '.' is 255 (white)
+        StringReader in = new StringReader("#.");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        Bmpify.process(in, out, 1);
+        byte[] bmp = out.toByteArray();
+
+        // 2 pixels: width=2, height=1, rowSize=2*3+2=8
+        // Byte 54..56: pixel 0 ('#') -> (0, 0, 0)
+        assertEquals(0, bmp[54]);
+        assertEquals(0, bmp[55]);
+        assertEquals(0, bmp[56]);
+
+        // Byte 57..59: pixel 1 ('.') -> (255, 255, 255)
+        assertEquals((byte) 255, bmp[57]);
+        assertEquals((byte) 255, bmp[58]);
+        assertEquals((byte) 255, bmp[59]);
     }
 }

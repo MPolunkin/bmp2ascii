@@ -7,7 +7,9 @@ import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Core image processing logic to convert ASCII art text streams into uncompressed 24-bit BMP images.
@@ -30,7 +32,7 @@ public final class Bmpify {
      * @param in    the character reader providing the ASCII art lines
      * @param out   the destination output stream to write binary BMP data to
      * @param scale pixel scale factor per character (e.g. 1 means 1x1 px per char, 2 means 2x2 px per char)
-     * @throws IOException if an I/O error occurs or if the input is empty
+     * @throws IOException if an I/O error occurs, if the input is empty, or if no recognized characters exist
      */
     public static void process(Reader in, OutputStream out, int scale) throws IOException {
         int factor = Math.max(1, scale);
@@ -43,7 +45,7 @@ public final class Bmpify {
      *
      * @param in the character reader
      * @return a list of text lines representing the ASCII art
-     * @throws IOException if an I/O error occurs or if the art contains no content
+     * @throws IOException if an I/O error occurs or if the art contains no content or only empty lines
      */
     private static List<String> readAsciiArt(Reader in) throws IOException {
         List<String> lines = new ArrayList<>();
@@ -52,7 +54,7 @@ public final class Bmpify {
         while ((line = reader.readLine()) != null) {
             lines.add(line);
         }
-        if (lines.isEmpty()) {
+        if (lines.isEmpty() || getMaxLineWidth(lines) == 0) {
             throw new IOException("Input ASCII art is empty");
         }
         return lines;
@@ -64,7 +66,7 @@ public final class Bmpify {
      * @param out    the output stream to write to
      * @param lines  the parsed ASCII art lines
      * @param factor the pixel scale factor per character
-     * @throws IOException if an I/O error occurs during writing
+     * @throws IOException if an I/O error occurs during writing or ramp construction
      */
     private static void writeBmp(OutputStream out, List<String> lines, int factor) throws IOException {
         int artWidth = getMaxLineWidth(lines);
@@ -76,9 +78,11 @@ public final class Bmpify {
         int rowPadding = calculateRowPadding(imgWidth);
         int rowBytes = imgWidth * 3 + rowPadding;
 
+        String ramp = buildEffectiveRamp(lines);
+
         byte[] header = createBmpHeader(imgWidth, imgHeight, rowBytes);
         out.write(header);
-        writePixelData(out, lines, factor, imgWidth, imgHeight, rowBytes, rowPadding);
+        writePixelData(out, lines, factor, imgWidth, imgHeight, rowBytes, rowPadding, ramp);
         out.flush();
     }
 
@@ -140,6 +144,36 @@ public final class Bmpify {
     }
 
     /**
+     * Builds an effective ramp by stripping {@link Main#MAX_RAMP} to only the characters
+     * present in the provided ASCII art, preserving their relative optical density order.
+     *
+     * @param lines the list of ASCII art lines
+     * @return a string containing the subset of characters found in the art in density order
+     * @throws IOException if no characters in the art match any character in {@link Main#MAX_RAMP}
+     */
+    public static String buildEffectiveRamp(List<String> lines) throws IOException {
+        Set<Character> usedChars = new HashSet<>();
+        for (String line : lines) {
+            for (int i = 0; i < line.length(); i++) {
+                usedChars.add(line.charAt(i));
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (char c : Main.MAX_RAMP.toCharArray()) {
+            if (usedChars.contains(c)) {
+                sb.append(c);
+            }
+        }
+
+        if (sb.length() == 0) {
+            throw new IOException("Input ASCII art contains no recognized characters from MAX_RAMP");
+        }
+
+        return sb.toString();
+    }
+
+    /**
      * Writes pixel scanlines in bottom-up order to the output stream, expanding each character
      * according to the scale factor and padding short lines with whitespace.
      *
@@ -150,10 +184,12 @@ public final class Bmpify {
      * @param imgHeight  the target image height in pixels
      * @param rowBytes   the total byte size of each scanline including padding
      * @param rowPadding the number of trailing zero padding bytes per scanline
+     * @param ramp       the stripped effective character density ramp
      * @throws IOException if an error occurs while writing to the stream
      */
     private static void writePixelData(OutputStream out, List<String> lines, int factor,
-                                       int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
+                                       int imgWidth, int imgHeight, int rowBytes, int rowPadding,
+                                       String ramp) throws IOException {
         byte[] rowBuffer = new byte[rowBytes];
 
         // BMP rows are stored bottom-up: y goes from (imgHeight - 1) down to 0
@@ -164,7 +200,7 @@ public final class Bmpify {
             for (int x = 0; x < imgWidth; x++) {
                 int artColIndex = x / factor;
                 char c = artColIndex < line.length() ? line.charAt(artColIndex) : ' ';
-                byte gray = charToGrayscale(c);
+                byte gray = charToGrayscale(c, ramp);
 
                 int offset = x * 3;
                 rowBuffer[offset]     = gray; // Blue
@@ -183,17 +219,20 @@ public final class Bmpify {
 
     /**
      * Maps an ASCII character to an 8-bit grayscale brightness value [0, 255]
-     * based on its position in the character density ramp.
+     * based on its position in the effective character density ramp.
      *
-     * @param c the ASCII character
+     * @param c    the ASCII character
+     * @param ramp the active density ramp
      * @return the grayscale byte intensity (0 for darkest, 255 for lightest)
      */
-    public static byte charToGrayscale(char c) {
-        int idx = Main.RAMP.indexOf(c);
+    public static byte charToGrayscale(char c, String ramp) {
+        int idx = ramp.indexOf(c);
         if (idx == -1) {
             return (byte) 255;
         }
-        return (byte) (idx * 255 / (Main.RAMP.length() - 1));
+        if (ramp.length() <= 1) {
+            return (byte) (ramp.charAt(0) == ' ' ? 255 : 0);
+        }
+        return (byte) (idx * 255 / (ramp.length() - 1));
     }
 }
-
