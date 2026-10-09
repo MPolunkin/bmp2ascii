@@ -9,6 +9,9 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Core image processing logic to convert ASCII art text streams into uncompressed 24-bit BMP images.
+ */
 public final class Bmpify {
 
     private static final int BMP_HEADER_SIZE = 54;
@@ -22,7 +25,12 @@ public final class Bmpify {
     }
 
     /**
-     * Converts ASCII art from a Reader to a 24-bit uncompressed BMP written to an OutputStream.
+     * Converts ASCII art from a Reader into a 24-bit uncompressed BMP image written to an OutputStream.
+     *
+     * @param in    the character reader providing the ASCII art lines
+     * @param out   the destination output stream to write binary BMP data to
+     * @param scale pixel scale factor per character (e.g. 1 means 1x1 px per char, 2 means 2x2 px per char)
+     * @throws IOException if an I/O error occurs or if the input is empty
      */
     public static void process(Reader in, OutputStream out, int scale) throws IOException {
         int factor = Math.max(1, scale);
@@ -30,6 +38,13 @@ public final class Bmpify {
         writeBmp(out, lines, factor);
     }
 
+    /**
+     * Reads all lines of ASCII art from the reader and validates that the content is non-empty.
+     *
+     * @param in the character reader
+     * @return a list of text lines representing the ASCII art
+     * @throws IOException if an I/O error occurs or if the art contains no content
+     */
     private static List<String> readAsciiArt(Reader in) throws IOException {
         List<String> lines = new ArrayList<>();
         BufferedReader reader = in instanceof BufferedReader br ? br : new BufferedReader(in);
@@ -43,6 +58,14 @@ public final class Bmpify {
         return lines;
     }
 
+    /**
+     * Orchestrates generating BMP headers and streaming scanlines into the output stream.
+     *
+     * @param out    the output stream to write to
+     * @param lines  the parsed ASCII art lines
+     * @param factor the pixel scale factor per character
+     * @throws IOException if an I/O error occurs during writing
+     */
     private static void writeBmp(OutputStream out, List<String> lines, int factor) throws IOException {
         int artWidth = getMaxLineWidth(lines);
         int artHeight = lines.size();
@@ -59,14 +82,35 @@ public final class Bmpify {
         out.flush();
     }
 
+    /**
+     * Finds the maximum length across all ASCII art lines to establish the canvas width.
+     *
+     * @param lines the list of text lines
+     * @return the maximum line length, or 0 if empty
+     */
     public static int getMaxLineWidth(List<String> lines) {
         return lines.stream().mapToInt(String::length).max().orElse(0);
     }
 
+    /**
+     * Calculates the number of padding bytes (0 to 3) needed to align a BMP pixel row to a 4-byte boundary.
+     *
+     * @param pixelWidth the width of the row in pixels
+     * @return the required padding bytes (between 0 and 3)
+     */
     public static int calculateRowPadding(int pixelWidth) {
         return (4 - (pixelWidth * 3) % 4) % 4;
     }
 
+    /**
+     * Constructs a standard 54-byte BMP header (14-byte BITMAPFILEHEADER + 40-byte BITMAPINFOHEADER)
+     * configured for 24-bit uncompressed RGB in little-endian byte order.
+     *
+     * @param width    the image width in pixels
+     * @param height   the image height in pixels (positive for bottom-up scanlines)
+     * @param rowBytes the total row size in bytes, including padding
+     * @return a byte array containing the 54-byte BMP header
+     */
     public static byte[] createBmpHeader(int width, int height, int rowBytes) {
         int imageSize = rowBytes * height;
         int fileSize = BMP_HEADER_SIZE + imageSize;
@@ -95,6 +139,19 @@ public final class Bmpify {
         return buffer.array();
     }
 
+    /**
+     * Writes pixel scanlines in bottom-up order to the output stream, expanding each character
+     * according to the scale factor and padding short lines with whitespace.
+     *
+     * @param out        the destination stream
+     * @param lines      the ASCII art text lines
+     * @param factor     the scale factor
+     * @param imgWidth   the target image width in pixels
+     * @param imgHeight  the target image height in pixels
+     * @param rowBytes   the total byte size of each scanline including padding
+     * @param rowPadding the number of trailing zero padding bytes per scanline
+     * @throws IOException if an error occurs while writing to the stream
+     */
     private static void writePixelData(OutputStream out, List<String> lines, int factor,
                                        int imgWidth, int imgHeight, int rowBytes, int rowPadding) throws IOException {
         byte[] rowBuffer = new byte[rowBytes];
@@ -124,6 +181,13 @@ public final class Bmpify {
         }
     }
 
+    /**
+     * Maps an ASCII character to an 8-bit grayscale brightness value [0, 255]
+     * based on its position in the character density ramp.
+     *
+     * @param c the ASCII character
+     * @return the grayscale byte intensity (0 for darkest, 255 for lightest)
+     */
     public static byte charToGrayscale(char c) {
         int idx = Main.RAMP.indexOf(c);
         if (idx == -1) {
@@ -132,3 +196,4 @@ public final class Bmpify {
         return (byte) (idx * 255 / (Main.RAMP.length() - 1));
     }
 }
+

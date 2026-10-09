@@ -7,6 +7,9 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
 
+/**
+ * Picocli command handler for the 'bmpify' subcommand, converting ASCII art text files to 24-bit BMP images.
+ */
 @Command(name = "bmpify", description = "Convert ASCII to BMP", mixinStandardHelpOptions = true)
 public class BmpifyCommand implements Callable<Integer> {
 
@@ -22,6 +25,11 @@ public class BmpifyCommand implements Callable<Integer> {
     @Option(names = {"-s", "--scale"}, defaultValue = "1", description = "Pixel scale factor per character")
     private int scale;
 
+    /**
+     * Executes the 'bmpify' command by opening file stream resources and delegating to {@link Bmpify#process}.
+     *
+     * @return 0 on successful conversion, 1 on validation or I/O failure
+     */
     @Override
     public Integer call() {
         if (scale < 1) {
