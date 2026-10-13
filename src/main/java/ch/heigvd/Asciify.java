@@ -6,6 +6,10 @@ import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Core image processing logic to convert 24-bit BMP images into ASCII art text
+ * streams.
+ */
 public final class Asciify {
     private static final int FILE_HEADER_SIZE = 14;
     private static final int DIB_HEADER_SIZE = 40;
@@ -21,6 +25,18 @@ public final class Asciify {
     private Asciify() {
     }
 
+    /**
+     * Converts a 24-bit BMP from an InputStream into ASCII art written to a Writer.
+     *
+     * @param in     the binary input stream providing BMP data
+     * @param out    the character writer for the resulting ASCII art
+     * @param width  optional max output width in characters; {@code null} or &gt;=
+     *               image width keeps full size
+     * @param invert whether to invert brightness (dark ↔ light) before mapping to
+     *               the ramp
+     * @throws IOException if an I/O error occurs or the BMP is invalid /
+     *                     unsupported
+     */
     public static void process(InputStream in, Writer out, Integer width, boolean invert)
             throws IOException {
 
@@ -29,6 +45,17 @@ public final class Asciify {
 
     }
 
+    /**
+     * Maps grayscale brightness to ASCII characters and writes the art line by
+     * line.
+     *
+     * @param out    the character writer to write to
+     * @param image  the parsed grayscale BMP data
+     * @param width  optional max output width; when smaller than the image,
+     *               downscales with character aspect
+     * @param invert whether to invert brightness before ramp mapping
+     * @throws IOException if an I/O error occurs during writing
+     */
     private static void writeAscii(Writer out, BmpGrayImage image, Integer width, boolean invert) throws IOException {
         int imgWidth = image.width();
         int absHeight = image.height();
@@ -63,6 +90,15 @@ public final class Asciify {
         }
     }
 
+    /**
+     * Reads a 24-bit BMP, validates headers, and builds a top-down brightness grid.
+     *
+     * @param in the binary input stream providing BMP data
+     * @return a grayscale image with width, height, and per-pixel brightness
+     *         (0–255)
+     * @throws IOException if the file is not a valid 24-bit BMP or pixel data is
+     *                     truncated
+     */
     private static BmpGrayImage readBrightness(InputStream in) throws IOException {
         // BMP file header is always 14 bytes
         byte[] fileHeader = in.readNBytes(FILE_HEADER_SIZE);
@@ -160,6 +196,14 @@ public final class Asciify {
         return new BmpGrayImage(imgWidth, absHeight, brightness);
     }
 
+    /**
+     * Holds grayscale BMP dimensions and per-pixel brightness values.
+     *
+     * @param width      image width in pixels
+     * @param height     absolute image height in pixels
+     * @param brightness 2D array {@code [row][col]} with values 0 (black) to 255
+     *                   (white)
+     */
     private record BmpGrayImage(int width, int height, int[][] brightness) {
     }
 }
