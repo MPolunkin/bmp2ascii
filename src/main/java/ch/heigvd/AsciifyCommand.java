@@ -9,7 +9,12 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
 
-@Command(name = "asciify", description = "Convert BMP to ASCII", mixinStandardHelpOptions = true)
+@Command(name = "asciify", description = "Convert BMP to ASCII", mixinStandardHelpOptions = true, footer = {
+        "",
+        "Example:",
+        "  asciify -i examples/smiley.bmp -o out.txt -w 80",
+        "  asciify -i examples/icecream.bmp -o out.txt -w 60 --invert"
+})
 public class AsciifyCommand implements Callable<Integer> {
 
     @Option(names = { "-i", "--input" }, required = true, description = "Input 24-bit uncompressed .bmp file")
