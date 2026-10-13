@@ -16,6 +16,7 @@ public final class Asciify {
     private static final int BITS_PER_PIXEL_SUPPORTED = 24;
     private static final int BYTES_PER_PIXEL = 3;
     private static final int MAX_BRIGHTNESS = 255;
+    private static final double CHAR_ASPECT = 0.5; // terminal chars are taller than wide
 
     private Asciify() {
     }
@@ -39,7 +40,7 @@ public final class Asciify {
 
         if (width != null && width > 0 && width < imgWidth) {
             outWidth = width;
-            outHeight = Math.max(1, absHeight * outWidth / imgWidth);
+            outHeight = Math.max(1, (int) Math.round(absHeight * (double) outWidth / imgWidth * CHAR_ASPECT));
         }
 
         // turning brightness into ASCII chars
