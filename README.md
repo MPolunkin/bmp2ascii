@@ -94,36 +94,62 @@ Sample files are available in the [`examples/`](examples) directory.
 
 ### Example 1: Convert BMP to ASCII art (`asciify`)
 
+Convert the sample ice cream BMP into terminal-friendly ASCII art by downscaling to 60 columns:
+
 ```bash
-java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i examples/smiley.bmp -o output.txt
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i examples/icecream.bmp -o output.txt -w 60
 ```
 
 Generated `output.txt`:
 
 ```text
-     @@@@@@     
-   @@      @@   
-  @          @  
- @   @@  @@   @ 
- @   @@  @@   @ 
-@              @
-@    @@@@@@    @
-@   @      @   @
-@              @
- @   @@@@@@   @ 
- @  @      @  @ 
-  @          @  
-   @@      @@   
-     @@@@@@     
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+________________________________+  `________________________
+___________________________I  u]]+d@ _______________________
+_________________________`@____=__=+= ______________________
+_______________________ &1?k%O_m___f{,"=____________________
+_______________________$]__/___1__f>/{$z'___________________
+______________________ |={X]____+[q@]+>+.___________________
+______________________ {-___________v+>% ___________________
+_______________________J(]{+l"^^^^^^^,@ ____________________
+________________________ ?<><<<<<<<<>8______________________
+_________________________O[<i<<<<i<<l ______________________
+_________________________ (<!<<<<i<lv_______________________
+____________________________<>#k#<<r._______________________
+__________________________^)<<<<<<,l________________________
+___________________________b]<<<>>#;________________________
+___________________________ }<<1>> _________________________
+____________________________1[<>-(~_________________________
+____________________________,v<?-~__________________________
+_____________________________`_<b;__________________________
+_____________________________~(" ___________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
+____________________________________________________________
 ```
 
+*(For smaller icons like `examples/smiley.bmp`, omit `-w` to preserve original 1:1 pixel dimensions).*
+
 ### Example 2: Convert ASCII art to BMP (`bmpify`)
+
+Convert an ASCII art text file into a 24-bit uncompressed BMP image, scaling up each character for visibility:
 
 ```bash
 java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i examples/sample_art.txt -o output.bmp --scale 4
 ```
 
-This generates an uncompressed 24-bit BMP image scaled 4x from the ASCII art character grid.
+This generates an uncompressed 24-bit BMP image scaled 4x from the ASCII art character grid. You can also re-encode generated ASCII art back to BMP:
+
+```bash
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i output.txt -o icecream.bmp --scale 2
+```
 
 ---
 
