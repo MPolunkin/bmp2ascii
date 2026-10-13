@@ -23,7 +23,7 @@ public class Main implements Runnable {
     /**
      * Alias to {@link #MAX_RAMP} preserved for backwards compatibility.
      */
-    public static final String RAMP = MAX_RAMP;
+    public static final String RAMP = "@%#*+=-:. ";
 
     /**
      * Displays CLI command usage when invoked without a subcommand.
