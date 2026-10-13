@@ -1,6 +1,6 @@
 # bmp2ascii
 
-[![Java](https://img.shields.io/badge/Java-21%2B-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![picocli](https://img.shields.io/badge/picocli-4.7.7-blue.svg)](https://picocli.info/)
 [![JUnit](https://img.shields.io/badge/JUnit-6.1.3-25A162.svg)](https://junit.org/junit6/)
@@ -16,11 +16,20 @@ Developed for the **DAI** (*Développement d'Applications Internet*) course at *
 
 ---
 
-## Prerequisites
+## Installation & Build
 
-- **Java JDK 21+** (developed and tested on Java 25)
+### Prerequisites
 
-## Build
+- **Java JDK 25+**
+
+### Clone & Build
+
+Clone the repository:
+
+```bash
+git clone https://github.com/MPolunkin/bmp2ascii.git
+cd bmp2ascii
+```
 
 Build the executable JAR using the Maven wrapper:
 
@@ -33,6 +42,12 @@ Build the executable JAR using the Maven wrapper:
 ```
 
 The executable JAR is generated at `target/bmp2ascii-1.0-SNAPSHOT.jar`.
+
+### Run Tests
+
+```bash
+./mvnw test
+```
 
 ---
 
@@ -47,7 +62,7 @@ java -jar target/bmp2ascii-1.0-SNAPSHOT.jar [COMMAND] [OPTIONS]
 #### `asciify` — Convert BMP to ASCII
 
 ```bash
-java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i input.bmp -o output.txt
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i <input.bmp> -o <output.txt> [OPTIONS]
 ```
 
 | Option | Description | Default |
@@ -61,7 +76,7 @@ java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i input.bmp -o output.txt
 #### `bmpify` — Convert ASCII to BMP
 
 ```bash
-java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i input.txt -o output.bmp
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i <input.txt> -o <output.bmp> [OPTIONS]
 ```
 
 | Option | Description | Default |
@@ -73,39 +88,59 @@ java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i input.txt -o output.bmp
 
 ---
 
-## Commit Guidelines
+## Examples & Output
 
-To ensure repository cleanliness and traceability, all contributions must adhere to the following standards:
+Sample files are available in the [`examples/`](examples) directory.
 
-### 1. Conventional Commits
-All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+### Example 1: Convert BMP to ASCII art (`asciify`)
+
+```bash
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar asciify -i examples/smiley.bmp -o output.txt
+```
+
+Generated `output.txt`:
 
 ```text
-<type>[optional scope]: <description>
+     @@@@@@     
+   @@      @@   
+  @          @  
+ @   @@  @@   @ 
+ @   @@  @@   @ 
+@              @
+@    @@@@@@    @
+@   @      @   @
+@              @
+ @   @@@@@@   @ 
+ @  @      @  @ 
+  @          @  
+   @@      @@   
+     @@@@@@     
 ```
 
-Common types:
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `refactor`: Code refactoring without behavioral changes
-- `test`: Adding or updating tests
-- `chore`: Maintenance, build tasks, or dependency updates
+### Example 2: Convert ASCII art to BMP (`bmpify`)
 
-### 2. Signed Commits
-All commits must be cryptographically signed using GPG or SSH.
-
-Enable automated signing:
 ```bash
-git config --global commit.gpgsign true
+java -jar target/bmp2ascii-1.0-SNAPSHOT.jar bmpify -i examples/sample_art.txt -o output.bmp --scale 4
 ```
 
-Or sign manually:
-```bash
-git commit -S -m "feat: add bmp header validation"
-```
+This generates an uncompressed 24-bit BMP image scaled 4x from the ASCII art character grid.
 
-Unsigned commits will not be accepted.
+---
+
+## Dependencies
+
+- **[picocli](https://picocli.info/)** (`4.7.7`): CLI parsing, subcommands routing, and help generation.
+- **[JUnit Jupiter](https://junit.org/)** (`6.1.3`): Automated unit testing.
+
+*Note: All binary BMP parsing/writing and text stream processing are implemented purely with standard Java I/O (`InputStream`, `OutputStream`, `Reader`, `Writer`) without external image libraries, in accordance with course requirements.*
+
+---
+
+## Commit Guidelines
+
+All contributions adhere to:
+1. **[Conventional Commits](https://www.conventionalcommits.org/)**: e.g., `feat: ...`, `fix: ...`, `docs: ...`, `test: ...`, `refactor: ...`.
+2. **Signed Commits**: All commits are cryptographically signed using GPG or SSH (`git commit -S`).
 
 ---
 
